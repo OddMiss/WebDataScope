@@ -25,3 +25,5 @@ telemetry-worker/.dev.vars*
 telemetry-worker/.generated-secrets.json
 telemetry-worker/.admin-credentials.txt
 telemetry-worker/README.md
+/.github
+/datajson

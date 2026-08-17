@@ -16,40 +16,19 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit("Missing dependency: msgpack (install via `pip install msgpack`)") from exc
 
 
-COLOR_GRAY = "#9e9e9e"
-COLOR_RED = "#e53935"
-COLOR_GREEN = "#2e7d32"
-COLOR_YELLOW = "#f9a825"
+# COLOR_GRAY = "#9e9e9e" # not bad
+# COLOR_RED = "#e53935" # bad
+# COLOR_GREEN = "#2e7d32" # good
+# COLOR_YELLOW = "#f9a825" # average
 
+COLOR_GRAY = "gray"
+COLOR_RED = "red"
+COLOR_GREEN = "green"
+COLOR_YELLOW = "yellow"
 
-def parse_cli_options(argv: Iterable[str]) -> Dict[str, str]:
-    options = {
-        "data_dir": "/home/runner/work/WebDataScope/WebDataScope/data",
-        "dataset_output": "dataset.json",
-        "datafield_output": "datafield.json",
-        "universe": "",
-        "date_countdown": "",
-    }
-    key_map = {
-        "--data-dir": "data_dir",
-        "--dataset-output": "dataset_output",
-        "--datafield-output": "datafield_output",
-        "--universe": "universe",
-        "--date-countdown": "date_countdown",
-    }
-
-    args = list(argv)
-    index = 0
-    while index < len(args):
-        key = args[index]
-        if key not in key_map:
-            raise SystemExit(f"Unsupported option: {key}")
-        if index + 1 >= len(args):
-            raise SystemExit(f"Missing value for option: {key}")
-        options[key_map[key]] = args[index + 1]
-        index += 2
-    return options
-
+SCRIPT_DIR = Path(__file__).parent.resolve()
+ROOT_DIR = SCRIPT_DIR.parent.resolve()
+DATA_DIR = ROOT_DIR / "data"
 
 def load_info_data(info_path: Path) -> Dict[str, Any]:
     packed = info_path.read_bytes()
@@ -246,38 +225,39 @@ def build_output(
     return output
 
 
-def main() -> None:
-    options = parse_cli_options(sys.argv[1:])
-    data_dir = Path(options["data_dir"])
+def main(data_dir, dataset_output_path, datafield_output_path, universe="", date_countdown="") -> None:
+    data_dir = Path(data_dir)
     info_data = load_info_data(data_dir / "oth" / "info_data.bin")
     dataset_list = load_dataset_list(data_dir / "dataSetList.json")
     star_index = build_star_index(dataset_list)
-    date_countdown = resolve_date_countdown(info_data, options["date_countdown"])
+    date_countdown = resolve_date_countdown(info_data, date_countdown)
 
     dataset_output = build_output(
         info_data=info_data,
         target_type="dataset",
         date_countdown=date_countdown,
         star_index=star_index,
-        universe=options["universe"],
+        universe=universe,
     )
     datafield_output = build_output(
         info_data=info_data,
         target_type="datafield",
         date_countdown=date_countdown,
         star_index=star_index,
-        universe=options["universe"],
+        universe="universe",
     )
 
-    Path(options["dataset_output"]).write_text(
+    Path(dataset_output_path).write_text(
         json.dumps(dataset_output, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    Path(options["datafield_output"]).write_text(
+    Path(datafield_output_path).write_text(
         json.dumps(datafield_output, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-
 if __name__ == "__main__":
-    main()
+    main(
+        data_dir=str(DATA_DIR), datafield_output_path=str(ROOT_DIR / "datafield.json"), 
+        dataset_output_path=str(ROOT_DIR / "dataset.json")
+    )
