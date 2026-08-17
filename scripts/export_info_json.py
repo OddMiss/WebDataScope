@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import re
+import sys
 import zlib
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -22,34 +22,33 @@ COLOR_GREEN = "#2e7d32"
 COLOR_YELLOW = "#f9a825"
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export dataset/datafield JSON from info_data.bin")
-    parser.add_argument(
-        "--data-dir",
-        default="/home/runner/work/WebDataScope/WebDataScope/data",
-        help="Path to data directory containing dataSetList.json and oth/info_data.bin",
-    )
-    parser.add_argument(
-        "--dataset-output",
-        default="dataset.json",
-        help="Output JSON path for dataset summary",
-    )
-    parser.add_argument(
-        "--datafield-output",
-        default="datafield.json",
-        help="Output JSON path for datafield summary",
-    )
-    parser.add_argument(
-        "--universe",
-        default="",
-        help="Universe used to resolve Star (★★★/☆☆☆). If omitted, Star defaults to ★★★ when any match exists.",
-    )
-    parser.add_argument(
-        "--date-countdown",
-        default="",
-        help="Optional override for DateCountdown (YYYYMMDD).",
-    )
-    return parser.parse_args()
+def parse_cli_options(argv: Iterable[str]) -> Dict[str, str]:
+    options = {
+        "data_dir": "/home/runner/work/WebDataScope/WebDataScope/data",
+        "dataset_output": "dataset.json",
+        "datafield_output": "datafield.json",
+        "universe": "",
+        "date_countdown": "",
+    }
+    key_map = {
+        "--data-dir": "data_dir",
+        "--dataset-output": "dataset_output",
+        "--datafield-output": "datafield_output",
+        "--universe": "universe",
+        "--date-countdown": "date_countdown",
+    }
+
+    args = list(argv)
+    index = 0
+    while index < len(args):
+        key = args[index]
+        if key not in key_map:
+            raise SystemExit(f"Unsupported option: {key}")
+        if index + 1 >= len(args):
+            raise SystemExit(f"Missing value for option: {key}")
+        options[key_map[key]] = args[index + 1]
+        index += 2
+    return options
 
 
 def load_info_data(info_path: Path) -> Dict[str, Any]:
@@ -248,33 +247,33 @@ def build_output(
 
 
 def main() -> None:
-    args = parse_args()
-    data_dir = Path(args.data_dir)
+    options = parse_cli_options(sys.argv[1:])
+    data_dir = Path(options["data_dir"])
     info_data = load_info_data(data_dir / "oth" / "info_data.bin")
     dataset_list = load_dataset_list(data_dir / "dataSetList.json")
     star_index = build_star_index(dataset_list)
-    date_countdown = resolve_date_countdown(info_data, args.date_countdown)
+    date_countdown = resolve_date_countdown(info_data, options["date_countdown"])
 
     dataset_output = build_output(
         info_data=info_data,
         target_type="dataset",
         date_countdown=date_countdown,
         star_index=star_index,
-        universe=args.universe,
+        universe=options["universe"],
     )
     datafield_output = build_output(
         info_data=info_data,
         target_type="datafield",
         date_countdown=date_countdown,
         star_index=star_index,
-        universe=args.universe,
+        universe=options["universe"],
     )
 
-    Path(args.dataset_output).write_text(
+    Path(options["dataset_output"]).write_text(
         json.dumps(dataset_output, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    Path(args.datafield_output).write_text(
+    Path(options["datafield_output"]).write_text(
         json.dumps(datafield_output, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
